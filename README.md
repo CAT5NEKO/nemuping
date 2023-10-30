@@ -3,11 +3,11 @@
 [SheeplaさんのPingソフト](https://github.com/sheepla/pingu)の実装方法を参考に通信の勉強を目的に作りました。
 
 ## 使い方
-1
+1.
 ```
 cd 対象のディレクトリ
 ```
-2
+2.
 ```
 .\nemuPing.exe -c [入力したAAの行数]　[IPアドレス]
 ```
