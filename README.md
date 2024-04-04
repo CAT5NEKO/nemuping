@@ -1,21 +1,18 @@
 ## NemuPing
-ねむだる豆腐でPingを行う狂気のツール。
+ねむだる豆腐でPingを行う狂気のツールです。  
 [SheeplaさんのPingソフト](https://github.com/sheepla/pingu)の実装方法を参考に通信の勉強を目的に作りました。
 
 ## 使い方
-1.
-```
-cd 対象のディレクトリ
-```
-2.
-```
-.\nemuPing.exe -c [入力したAAの行数]　[IPアドレス]
-```
+1.リポジトリをクローンします。  
+2.`go build`でビルド  
+3.`nemuPing 192.XXX.X.XXX`のように実行します。  
 
-### 諸問題
-・入力したAAの行数を指定しないと勝手に止まってしまう
-・表示がごちゃごちゃしていて一貫性がない（フォーマット文字列についての勉強不足💥）
-
+## オプション
+```shell
+nemuPing -c 4 192.XXX.X.XXX //指定回数のPingを行います(表示回数はint型で指定します)  
+nemuPing -v //バージョンを表示します
+nemuPing -p //管理者権限で実行します
+```
 
 ### 参考資料
 ```
@@ -25,3 +22,19 @@ Copyright 2022 The Prometheus Authors
 Copyright 2016 Cameron Sparr and contributors.
 https://github.com/prometheus-community/pro-bing　　閲覧日10/31/23 
 ```
+
+## 変更履歴
+
+### 2023/10/31 V1.0
+初版リリース  
+このバージョンでは、アスキーアートは固定されていました。  
+また、引数として表示数を明示しないとエラーを起こす問題を抱えていました。  
+
+### 2024/04/04 V2.0
+`.env`ファイルから自分のお好きなアスキーアートでPingを行うことができるようになりました。
+
+[設定方法]
+
+1. `.env`ファイルを書き換え
+2. `go build`で再度ビルド
+3. `nemuPing`を実行

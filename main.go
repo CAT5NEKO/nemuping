@@ -1,45 +1,17 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/jessevdk/go-flags"
-	probing "github.com/prometheus-community/pro-bing"
 	"os"
 	"os/signal"
 	"runtime"
-	"strings"
+
+	"github.com/fatih/color"
+	"github.com/jessevdk/go-flags"
+	probing "github.com/prometheus-community/pro-bing"
 )
-
-// ねむだるの部分を変更すれば、好きなアイコンが出力できるようになる。
-// 　でも、ねむダルに併せて色を2色に絞っちゃってるから、色が変わらない。なんか色々足してください。
-var nemudaru = []string{
-
-	`* ...................................................`,
-	`* ...................................................`,
-	`* ...................................::+#%##*-.......`,
-	`* ..........-=***+=::................=%%%: =#%=......`,
-	`* ........=%%%#:.=##-...............-%%%#  .##%:.....`,
-	`* .......*%%%%+  .##%-..............*%%%%:-*%#%=.....`,
-	`* ......=%%%%%*..=%%##..............#%%%%#%%%+#+.....`,
-	`* ......#%#%%%#*%%%#+%..............**#%%%%%*=%-.....`,
-	`* ......+%*#%%%%%%%*+%..............:#+####*+**......`,
-	`* .......##+*#####*+#=...............-*++=-=#*.......`,
-	`* ........*#++++==+#=..................=+**+:........`,
-	`* .........:+*#***=:......................... .......`,
-	`* ...............................:-+-................`,
-	`* .........  ..........BBBBBBBBBBBCC.................`,
-	`* ......................CBBBBBBB.BBN.................`,
-	`* ........................CBBBBBBC...................`,
-	`* ...................................................`,
-	`* ...................................................`,
-}
-
-var appName = "nemudaru"
-var appVersion = "0.0.1"
-var appDescription = "ping command with nemudaru"
-var Usage = "Usage: nemudaru [options...] <host>"
 
 type exitCode int
 
@@ -49,12 +21,18 @@ const (
 	ExitCodeErrorPing
 )
 
-// 現段階ではバージョニングが上手く再現できず、今後修正する。
 type options struct {
-	Count     int  `short:"c" long:"count" description:"パケットの送信回数を指定します。" default:"4"`
-	Privilege bool `short:"p" long:"privileged" description:"特権モードで実行します。"`
-	Version   bool `short:"v" long:"version" description:"バージョンを表示します。"`
+	Count     int  `short:"c" long:"count" description:"Number of packets to send."`
+	Privilege bool `short:"p" long:"privileged" description:"Execute in privileged mode."`
+	Version   bool `short:"v" long:"version" description:"Print version."`
 }
+
+var (
+	appName        = "nemuping"
+	appVersion     = "0.0.1"
+	appDescription = "Ping command with custom ASCII art."
+	Usage          = "Usage: nemuping [options...] <host>"
+)
 
 func main() {
 	code, err := run(os.Args[1:])
@@ -73,8 +51,8 @@ func run(cliArgs []string) (exitCode, error) {
 	parser.Name = appName
 	parser.Usage = Usage
 	parser.ShortDescription = appDescription
-	//アスキーアートに合わせてデフォルトの出力数弄れる。本家ではデフォルトを開放しても止まることなく挙動してたから修正必要かも。
-	options.Count = 17
+	//アスキーアートの行数に合わせてこちらの値を調整すると、アスキーが全部出力された時点で終了するようになります。
+	options.Count = 18
 
 	args, err := parser.ParseArgs(cliArgs)
 	if err != nil {
@@ -87,7 +65,7 @@ func run(cliArgs []string) (exitCode, error) {
 		fmt.Printf("%s version %s\n", appName, appVersion)
 		return ExitCodeOK, nil
 	}
-	//　!0処理では一概にして因数不備として処理するエラーが出たので対応。
+
 	if len(args) == 0 {
 		return ExitCodeErrorArgs, errors.New("引数エラー")
 	}
@@ -96,7 +74,12 @@ func run(cliArgs []string) (exitCode, error) {
 		return ExitCodeErrorArgs, errors.New("引数エラー")
 	}
 
-	pinger, err := initPinger(args[0], options)
+	asciiArt, err := readASCIIArtFromEnv(".env")
+	if err != nil {
+		return ExitCodeErrorArgs, err
+	}
+
+	pinger, err := initPinger(args[0], options, asciiArt)
 	if err != nil {
 		return ExitCodeOK, fmt.Errorf("Pingの初期化エラー: %w", err)
 	}
@@ -106,7 +89,7 @@ func run(cliArgs []string) (exitCode, error) {
 	return ExitCodeOK, nil
 }
 
-func initPinger(host string, options options) (*probing.Pinger, error) {
+func initPinger(host string, options options, asciiArt []string) (*probing.Pinger, error) {
 	pinger, err := probing.NewPinger(host)
 	if err != nil {
 		return nil, fmt.Errorf("pingの初期化エラー: %s", err)
@@ -114,7 +97,6 @@ func initPinger(host string, options options) (*probing.Pinger, error) {
 
 	pinger.Count = options.Count
 
-	// キャンセル処理
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
@@ -128,25 +110,32 @@ func initPinger(host string, options options) (*probing.Pinger, error) {
 		pinger.IPAddr(),
 	)
 
-	pinger.OnRecv = pingerOnRecvColor
+	pinger.OnRecv = pingerOnRecvColor(asciiArt)
 	pinger.OnFinish = pingerOnFinishSummary
 
 	if options.Privilege || runtime.GOOS == "windows" {
 		pinger.SetPrivileged(true)
 	}
 
+	pinger.OnFinish = func(stats *probing.Statistics) {
+		pinger.Stop()
+		pingerOnFinishSummary(stats)
+	}
+
 	return pinger, nil
 }
 
-func pingerOnRecvColor(pkt *probing.Packet) {
-	fmt.Printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%v\n",
-		compileASCIICode(pkt.Seq),
-		color.New(color.FgGreen, color.Bold).Sprint(pkt.IPAddr),
-		color.New(color.FgCyan, color.Bold).Sprint(pkt.Seq),
-		color.New(color.FgRed, color.Bold).Sprint(pkt.TTL),
-		color.New(color.FgGreen, color.Bold).Sprint(pkt.IPAddr),
-		color.New(color.FgBlue, color.Bold).Sprint(pkt.Nbytes),
-	)
+func pingerOnRecvColor(asciiArt []string) func(pkt *probing.Packet) {
+	return func(pkt *probing.Packet) {
+		fmt.Printf("%s %d bytes from %s: icmp_seq=%d ttl=%d time=%v\n",
+			asciiArt[pkt.Seq%len(asciiArt)],
+			pkt.Nbytes,
+			color.New(color.FgGreen, color.Bold).Sprint(pkt.IPAddr),
+			color.New(color.FgCyan, color.Bold).Sprint(pkt.Seq),
+			color.New(color.FgRed, color.Bold).Sprint(pkt.TTL),
+			color.New(color.FgBlue, color.Bold).Sprint(pkt.Nbytes),
+		)
+	}
 }
 
 func pingerOnFinishSummary(stats *probing.Statistics) {
@@ -166,25 +155,24 @@ func pingerOnFinishSummary(stats *probing.Statistics) {
 	)
 }
 
-func compileASCIICode(idx int) string {
-	if len(nemudaru) <= idx {
-		idx %= len(nemudaru)
+func readASCIIArtFromEnv(filename string) ([]string, error) {
+	var asciiArt []string
+
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		asciiArt = append(asciiArt, line)
 	}
 
-	line := nemudaru[idx]
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
 
-	line = colorize(line, ".", color.New(color.FgWhite, color.Bold))
-	line = colorize(line, "-,+,*,+,=,:,#", color.New(color.FgGreen, color.Bold))
-	line = colorize(line, "B,C,N", color.New(color.FgRed, color.Bold))
-
-	return line
-}
-
-// 上の文字列はruneで扱うと死んでしまうので文字列縛りで処理
-func colorize(text string, target string, color *color.Color) string {
-	return strings.ReplaceAll(
-		text,
-		string(target),
-		color.Sprint("#"),
-	)
+	return asciiArt, nil
 }
