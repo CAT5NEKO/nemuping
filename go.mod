@@ -6,6 +6,7 @@ require (
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/prometheus-community/pro-bing v0.3.0 // indirect
