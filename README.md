@@ -44,3 +44,5 @@ https://github.com/prometheus-community/pro-bing　　閲覧日10/31/23
 1. `.env`ファイルを書き換え
 2. `go build`で再度ビルド
 3. `nemuPing`を実行
+
+※アスキーアートは横の長さが揃っているのものを用意してください。
