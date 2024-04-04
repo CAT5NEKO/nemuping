@@ -30,8 +30,14 @@ https://github.com/prometheus-community/pro-bing　　閲覧日10/31/23
 このバージョンでは、アスキーアートは固定されていました。  
 また、引数として表示数を明示しないとエラーを起こす問題を抱えていました。  
 
+![image](https://github.com/CAT5NEKO/nemuping/assets/111590457/f7724159-3ee5-41ad-96d9-2bb1e217240b)
+
+
 ### 2024/04/04 V2.0
 `.env`ファイルから自分のお好きなアスキーアートでPingを行うことができるようになりました。
+
+![image](https://github.com/CAT5NEKO/nemuping/assets/111590457/d98df370-119e-4735-820c-48c2286081ff)
+
 
 [設定方法]
 
